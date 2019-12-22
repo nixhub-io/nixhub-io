@@ -27,6 +27,8 @@ func main() {
 	templates.Session = d
 
 	r := errchi.NewRouter()
+
+	r.Mount(templates.MountDir("/static"))
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) (int, error) {
 		if err := templates.RenderHomepage(w, ChatLog); err != nil {
 			return 500, err

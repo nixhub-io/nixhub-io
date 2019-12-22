@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/markbates/pkger"
@@ -33,6 +34,11 @@ func init() {
 	if err := parseFiles(Frontpage, parts...); err != nil {
 		log.Panicln(err)
 	}
+}
+
+func MountDir(path string) (string, http.Handler) {
+	return path + "/",
+		http.StripPrefix(path+"/", http.FileServer(pkger.Dir(path)))
 }
 
 func RenderHomepage(w io.Writer, content interface{}) error {
