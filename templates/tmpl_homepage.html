@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<link rel="stylesheet" href="../static/style.css">
+	<meta property="og:title" content="NixHub">
+	<meta property="og:image"
+		  content="https://cdn.discordapp.com/icons/361910177961738242/0680ca1999781a45dafca3e281863a7a.png?size=128">
+</head>
+
+<body>
+	<main>
+		<h1>NixHub</h1>
+		<nav>
+			<a id="discord">Discord</a>
+			<a id="irc">IRC</a>
+		</nav>
+	</main>
+
+	<aside class="background">
+	{{ range . }}
+		{{ template "message" . }}
+	{{ end }}
+
+<!-- Emulate end of stream -->

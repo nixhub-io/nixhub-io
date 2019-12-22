@@ -1,0 +1,14 @@
+{{ define "message" }}
+<div class="message" id="{{ .ID }}">
+	<img class="avatar" src="{{ .Author.AvatarURL 64 }}" />
+	<div class="content">
+		<p class="author">
+			{{ messageAuthorName . }}
+			<span class="timestamp">{{ messageTimestamp . }}</span>
+		</p>
+		<p class="content">
+			{{ messageContent . }}
+		</p>
+	</div>
+</div>
+{{ end }}
