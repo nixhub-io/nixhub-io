@@ -1,14 +1,106 @@
 {{ define "message" }}
-<div class="message" id="{{ .ID }}">
-	<img class="avatar" src="{{ .Author.AvatarURL 64 }}" />
+<div class="message {{if .Small}} small {{end}}" id="{{ .ID }}">
+	<img class="avatar" src="{{ .AvatarURL }}" />
 	<div class="content">
 		<p class="author">
-			{{ messageAuthorName . }}
-			<span class="timestamp">{{ messageTimestamp . }}</span>
+			{{ .Author }}
+			<span class="timestamp">{{ .Timestamp }}</span>
 		</p>
-		<p class="content">
-			{{ messageContent . }}
-		</p>
+		<p class="content">{{ .Content }}</p>
+
+		{{ if .Message }}
+
+		{{ range .Message.Attachments }}
+			{{ template "attachment" . }}
+		{{ end }}
+
+		{{ range .Message.Embeds }}
+			{{ if eq .Type "image" }}
+				<img class="attachment" src="{{.Thumbnail.ProxyURL}}" />
+			{{ else }}
+				{{ template "embed" . }}
+			{{ end }}
+		{{ end }}
+
+		{{ end }}
 	</div>
 </div>
+{{ end }}
+
+{{ define "embed" }}
+	<div class="embed"
+		 {{ if .Color }} 
+		 style="border-color: #{{ hex .Color }}" 
+		 {{ end }}>
+
+		<div class="left">
+			{{ if .Author }}
+			<div class="author">
+				{{ if .Author.IconURL }}
+				<img class="icon" src="{{.Author.ProxyIconURL}}" />
+				{{ end }}
+	
+				<a href="{{.Author.URL}}">{{.Author.Name}}</a>
+			</div>
+			{{ end }}
+	
+			{{ if .Title }}
+			<p class="title">{{.Title}}</p>
+			{{ end }}
+	
+			{{ if .Description }}
+			<p class="description">{{md .Description}}</p>
+			{{ end }}
+	
+			{{ if .Fields }}
+			<div class="fields">
+				{{ range .Fields }}
+				<div class="field {{if .Inline}} inline {{end}}">
+					<p class="name" >{{.Name}}</p>
+					<p class="value">{{.Value}}</p>
+				</div>
+				{{ end }}
+			</div>
+			{{ end }}
+	
+			{{ if .Image }}
+				{{ template "attachment" .Image }}
+			{{ else if .Video }}
+				{{ template "attachment" .Video }}
+			{{ end }}
+	
+			{{ if or .Footer .Timestamp }}
+			<div class="footer">
+				{{ if .Footer }}
+					<img class="icon" src="{{.Footer.ProxyIconURL}}" />
+					<p>{{.Footer.Text}}</p>
+				{{ end }}
+	
+				{{ if and .Footer .Timestamp }}-{{ end }}
+	
+				{{ if .Timestamp }}
+					<p class="timestamp">{{ rfc3339 .Timestamp }}</p>
+				{{ end }}
+			</div>
+			{{ end }}
+		</div>
+
+		<div class="right">
+			{{ if .Thumbnail }}
+			<img class="thumbnail" src="{{.Thumbnail.ProxyURL}}" />
+			{{ end }}
+		</div>
+	</div>
+{{ end }}
+
+{{ define "attachment" }}
+	{{ if      (URLIsImage .URL) }}
+	<img   class="attachment" src="{{.ProxyURL}}" />
+	{{ else if (URLIsVideo .URL) }}
+	<video class="attachment" src="{{.ProxyURL}}" />
+	{{ else if (URLIsAudio .URL) }}
+	<audio class="attachment" src="{{.ProxyURL}}" />
+	{{ else }}
+	<a class="attachment" href="{{.ProxyURL}}">{{.URL}}</a>
+	{{ end }}
 {{ end }}

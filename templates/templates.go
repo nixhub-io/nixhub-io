@@ -11,6 +11,7 @@ import (
 	"github.com/markbates/pkger"
 	"github.com/markbates/pkger/pkging"
 	"github.com/pkg/errors"
+	"gitlab.com/shihoya-inc/errchi"
 )
 
 var Frontpage = template.New("").Funcs(htmlFns)
@@ -23,12 +24,12 @@ func init() {
 	var (
 		parts = []pkging.File{
 			mustResolve("/templates/tmpl_homepage.html"),
+			mustResolve("/templates/tmpl_messages.html"),
 			mustResolve("/templates/tmpl_message.html"),
 		}
 
 		// Check must exist
 		_ = mustResolve("/static/style.css")
-		_ = mustResolve("/static/nfront.png")
 	)
 
 	if err := parseFiles(Frontpage, parts...); err != nil {
@@ -41,15 +42,30 @@ func MountDir(path string) (string, http.Handler) {
 		http.StripPrefix(path+"/", http.FileServer(pkger.Dir(path)))
 }
 
-func RenderHomepage(w io.Writer, content interface{}) error {
-	switch content := content.(type) {
-	case []*discordgo.Message:
-		return Frontpage.Execute(w, content)
-	case *discordgo.Message:
-		return Frontpage.ExecuteTemplate(w, "message", content)
-	default:
-		return errors.New("Unknown content type")
+type Renderer interface {
+	Render(w io.Writer) error
+}
+
+func QuickRender(content Renderer) errchi.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) (int, error) {
+		return RenderHomepage(w, content)
 	}
+}
+
+func RenderHomepage(w io.Writer, content Renderer) (int, error) {
+	var err error
+
+	if content == nil {
+		err = Frontpage.Execute(w, nil)
+	} else {
+		err = content.Render(w)
+	}
+
+	if err != nil {
+		return 500, err
+	}
+
+	return 200, nil
 }
 
 func parseFiles(tmpl *template.Template, files ...pkging.File) error {

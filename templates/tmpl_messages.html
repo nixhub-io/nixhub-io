@@ -1,5 +1,15 @@
 {{ define "messages" }}
-	{{ range . }}
+<!DOCTYPE html>
+<html>
 
+<head>
+	<link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body class="messages">
+	{{ range . }}
+		{{ template "message" . }}
 	{{ end }}
+
+<!-- Emulate end of stream -->
 {{ end }}

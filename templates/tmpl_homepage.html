@@ -18,8 +18,6 @@
 	</main>
 
 	<aside class="background">
-	{{ range . }}
-		{{ template "message" . }}
-	{{ end }}
-
-<!-- Emulate end of stream -->
+		<iframe class="feed" src="/feed" loading="lazy" frameborder="0" />
+	</aside>
+</body>
