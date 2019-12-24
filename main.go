@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -13,8 +14,26 @@ import (
 )
 
 func main() {
+	var token string
+
+	// Try and load a token from file
+	if file := os.Getenv("TOKEN_FILE"); file != "" {
+		f, err := ioutil.ReadFile(file)
+		if err != nil {
+			log.Println("Failed to open", file+":", err)
+		}
+
+		token = string(f)
+	} else {
+		token = os.Getenv("BOT_TOKEN")
+	}
+
+	if token == "" {
+		log.Println("Token must not be empty!")
+	}
+
 	// nixhubd
-	d, err := discordgo.New("Bot " + os.Getenv("BOT_TOKEN"))
+	d, err := discordgo.New("Bot " + token)
 	if err != nil {
 		log.Println("AAAA:", err)
 	}
