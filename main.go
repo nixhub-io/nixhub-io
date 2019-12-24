@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"git.sr.ht/~diamondburned/gocad"
@@ -20,22 +21,22 @@ func main() {
 	if file := os.Getenv("TOKEN_FILE"); file != "" {
 		f, err := ioutil.ReadFile(file)
 		if err != nil {
-			log.Println("Failed to open", file+":", err)
+			log.Fatalln("Failed to open", file+":", err)
 		}
 
-		token = string(f)
+		token = strings.TrimSpace(string(f))
 	} else {
 		token = os.Getenv("BOT_TOKEN")
 	}
 
 	if token == "" {
-		log.Println("Token must not be empty!")
+		log.Fatalln("Token must not be empty!")
 	}
 
 	// nixhubd
 	d, err := discordgo.New("Bot " + token)
 	if err != nil {
-		log.Println("AAAA:", err)
+		log.Fatalln("AAAA:", err)
 	}
 
 	d.StateEnabled = true
@@ -54,6 +55,8 @@ func main() {
 	})
 
 	defer d.Close()
+
+	start("Templates", templates.Initialize)
 
 	start("Dispenser", func() {
 		if err := dispenser.Initialize(d, os.Getenv("CHANNEL_ID")); err != nil {

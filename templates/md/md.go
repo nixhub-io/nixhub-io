@@ -54,7 +54,6 @@ func parse(c string, d *discordgo.Session, m *discordgo.Message) template.HTML {
 			return ""
 		}
 
-		s.message = m
 		md = m.Content
 	}
 

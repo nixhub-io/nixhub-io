@@ -18,7 +18,7 @@ import (
 var Frontpage = template.New("").Funcs(htmlFns)
 var Session *discordgo.Session
 
-func init() {
+func Initialize() {
 	pkger.Include("/templates/")
 	pkger.Include("/static/")
 

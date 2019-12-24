@@ -11,12 +11,12 @@ import (
 
 type mdState struct {
 	strings.Builder
-	matches [][]match
-	last    int
-	chunk   string
-	prev    string
-	context []string
-	message *discordgo.Message
+	matches   [][]match
+	last      int
+	chunk     string
+	prev      string
+	context   []string
+	onlyEmoji bool
 }
 
 type match struct {
@@ -130,7 +130,7 @@ func (s *mdState) switchTree(i int) {
 			s.matches[i][10].str == "a",
 		)
 		var class = "emoji"
-		if s.message != nil && s.message.Content == "" {
+		if s.prev == "" {
 			class += " large"
 		}
 		s.chunk = `<img class="` + class + `" src="` + url + `" />`
