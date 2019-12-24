@@ -2,6 +2,12 @@ cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
 cloud.google.com/go v0.38.0/go.mod h1:990N+gfupTy94rShfmMCWGDn0LpTmnzTp2qbd1dvSRU=
 contrib.go.opencensus.io/exporter/ocagent v0.4.12/go.mod h1:450APlNTSR6FrvC3CTRqYosuDstRB9un7SOx2k/9ckA=
+git.sr.ht/~diamondburned/geotz v0.0.0-20191224051612-788ab8a817c9 h1:0eKYIXV2kHFSuBBskPK7K6aY+75M09RM/+ezxcH+RwM=
+git.sr.ht/~diamondburned/geotz v0.0.0-20191224051612-788ab8a817c9/go.mod h1:zcgMXzOygGZA65nvIF0nCcl5FnXPBZD7VA2/KFkBI6M=
+git.sr.ht/~diamondburned/geotz v0.0.0-20191224052112-183de6de474a h1:+1wWKl2n8xGRL1Vddh83Nc8hkVIvHfkAgPgRTM3UTQM=
+git.sr.ht/~diamondburned/geotz v0.0.0-20191224052112-183de6de474a/go.mod h1:zcgMXzOygGZA65nvIF0nCcl5FnXPBZD7VA2/KFkBI6M=
+git.sr.ht/~diamondburned/geotz v0.0.0-20191224053446-e16e6d4aaf84 h1:sDvlI7JOCaJaGqDoHlyTKJeEeztlcoC12u55PqC2+fo=
+git.sr.ht/~diamondburned/geotz v0.0.0-20191224053446-e16e6d4aaf84/go.mod h1:zcgMXzOygGZA65nvIF0nCcl5FnXPBZD7VA2/KFkBI6M=
 git.sr.ht/~diamondburned/gocad v0.0.0-20191222065813-66cd6822ff08 h1:orY+FkGLh0h6Br+1KuJ/AQtgZS+0fH04sSlUOEn0BLo=
 git.sr.ht/~diamondburned/gocad v0.0.0-20191222065813-66cd6822ff08/go.mod h1:bm14IijREFgv51B3mn6ovP/FJ1qCXs2ta1PUZd/Lq/I=
 github.com/Azure/azure-sdk-for-go v32.4.0+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
@@ -281,6 +287,8 @@ github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81P
 github.com/timewasted/linode v0.0.0-20160829202747-37e84520dcf7/go.mod h1:imsgLplxEC/etjIhdr3dNzV3JeT27LbVu5pYWm0JCBY=
 github.com/transip/gotransip v0.0.0-20190812104329-6d8d9179b66f/go.mod h1:i0f4R4o2HM0m3DZYQWsj6/MEowD57VzoH0v3d7igeFY=
 github.com/uber-go/atomic v1.3.2/go.mod h1:/Ct5t2lcmbJ4OSe/waGBoaVvVqtO0bmtfVNex1PFV8g=
+github.com/ulikunitz/xz v0.5.6 h1:jGHAfXawEGZQ3blwU5wnWKQJvAraT7Ftq9EXjnXYgt8=
+github.com/ulikunitz/xz v0.5.6/go.mod h1:2bypXElzHzzJZwzH67Y6wb67pO62Rzfn7BSiF4ABRW8=
 github.com/urfave/cli v1.22.1/go.mod h1:Gos4lmkARVdJ6EkW0WaNv/tZAAMe9V7XWyB60NtXRu0=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasttemplate v1.0.1/go.mod h1:UQGH1tvbgY+Nz5t2n7tXsz52dQxojPUpymEIMZ47gx8=
@@ -339,6 +347,7 @@ golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58 h1:8gQV6CLnAEikrhgkHFbMAEhagSSnXWGV915qUMm9mrU=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
+golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20180622082034-63fc586f45fe/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=

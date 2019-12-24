@@ -33,10 +33,15 @@ func RegisterWriter(w io.Writer, ctx context.Context) (int, error) {
 
 	var flush = w.(http.Flusher).Flush
 
+	var tz = time.Local
+	if loc, ok := ctx.Value("tz").(*time.Location); ok {
+		tz = loc
+	}
+
 	for {
 		select {
 		case m := <-inc:
-			if c, err := templates.RenderHomepage(w, m); err != nil {
+			if c, err := templates.RenderHomepage(w, m, tz); err != nil {
 				log.Println("Error rendering message:", err)
 				return c, err
 			}

@@ -10,6 +10,10 @@ type MessageDelete struct {
 }
 
 func (d *MessageDelete) Render(w io.Writer) error {
-	_, err := fmt.Fprintf(w, `<style>#%s { display: none; }</style>`, d.ID)
+	_, err := fmt.Fprintf(w, `
+	<style type="text/css">
+		div.message[id="%s"] { display: none; }
+	</style>`, d.ID)
+
 	return err
 }

@@ -21,6 +21,17 @@ func (ms Messages) Render(w io.Writer) error {
 	return Frontpage.ExecuteTemplate(w, "messages", ms)
 }
 
+func (ms Messages) RenderWithTimezone(w io.Writer, location *time.Location) error {
+	cp := append([]*Message{}, ms...)
+
+	for i, msg := range cp {
+		cp[i].timestamp = msg.timestamp.In(location)
+		cp[i].Timestamp = fmtTime(msg.timestamp)
+	}
+
+	return Messages(cp).Render(w)
+}
+
 type Message struct {
 	ID        string
 	Author    template.HTML
@@ -32,10 +43,22 @@ type Message struct {
 	Small bool
 
 	Message *discordgo.Message
+
+	timestamp time.Time
 }
+
+var _ RendererWithTimezone = (*Message)(nil)
 
 func (m *Message) Render(w io.Writer) error {
 	return Frontpage.ExecuteTemplate(w, "message", m)
+}
+
+func (m *Message) RenderWithTimezone(w io.Writer, location *time.Location) error {
+	cp := &(*m)
+	cp.timestamp = m.timestamp.In(location)
+	cp.Timestamp = fmtTime(m.timestamp)
+
+	return cp.Render(w)
 }
 
 func RenderMessages(dmsgs []*discordgo.Message) Messages {
@@ -59,7 +82,8 @@ func RenderMessage(dm *discordgo.Message) *Message {
 	// Parse timestamp
 	t, err := dm.Timestamp.Parse()
 	if err == nil {
-		m.Timestamp = fmtTime(t)
+		m.timestamp = t.UTC()
+		m.Timestamp = fmtTime(m.timestamp)
 	}
 
 	// Parse author
@@ -82,6 +106,11 @@ func fmtTime(t time.Time) template.HTML {
 
 func parseAuthor(u *discordgo.User, guildID string) (n template.HTML) {
 	n = escapeHTML(u.Username)
+
+	// Webhooks don't have a discriminator
+	if u.Discriminator == "0000" {
+		return
+	}
 
 	if guildID == "" {
 		log.Println("GuildID is empty")

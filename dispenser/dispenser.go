@@ -11,7 +11,7 @@ import (
 const BufSz = 25
 
 var MessagePool templates.Messages
-var LastAuthor string // calculate small
+var LastAuthor *discordgo.User // calculate small
 var MessageMu sync.Mutex
 
 var Session *discordgo.Session
@@ -21,6 +21,20 @@ func CopyPool() templates.Messages {
 	defer MessageMu.Unlock()
 
 	return append([]*templates.Message{}, MessagePool...)
+}
+
+// setLastAuthor asserts and returns new.Small
+func setLastAuthor(new *templates.Message) bool {
+	if LastAuthor == nil {
+		LastAuthor = new.Message.Author
+		return false
+	}
+
+	new.Small = (LastAuthor.ID == new.Message.Author.ID &&
+		LastAuthor.Username == new.Message.Author.Username)
+	LastAuthor = new.Message.Author
+
+	return new.Small
 }
 
 func Initialize(s *discordgo.Session, channelID string) error {
@@ -62,8 +76,7 @@ func Initialize(s *discordgo.Session, channelID string) error {
 	// earliest to latest. We iterate from the start of MessagePool, as that's
 	// earliest.
 	for _, msg := range MessagePool {
-		msg.Small = LastAuthor == msg.Message.Author.ID
-		LastAuthor = msg.Message.Author.ID
+		setLastAuthor(msg)
 	}
 
 	// Add hooks

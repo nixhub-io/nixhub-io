@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/markbates/pkger"
@@ -46,18 +47,28 @@ type Renderer interface {
 	Render(w io.Writer) error
 }
 
+type RendererWithTimezone interface {
+	RenderWithTimezone(w io.Writer, tz *time.Location) error
+}
+
 func QuickRender(content Renderer) errchi.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) (int, error) {
-		return RenderHomepage(w, content)
+		return RenderHomepage(w, content, nil)
 	}
 }
 
-func RenderHomepage(w io.Writer, content Renderer) (int, error) {
+func RenderHomepage(w io.Writer, content Renderer, tz *time.Location) (int, error) {
 	var err error
 
-	if content == nil {
+	switch content := content.(type) {
+	case RendererWithTimezone:
+		if tz == nil {
+			tz = time.Local
+		}
+		err = content.RenderWithTimezone(w, tz)
+	case nil:
 		err = Frontpage.Execute(w, nil)
-	} else {
+	default:
 		err = content.Render(w)
 	}
 
