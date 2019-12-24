@@ -15,8 +15,10 @@ var regexes = []string{
 	`(?m)(?:\x60\x60\x60 *(\w*)\n([\s\S]*?)\x60\x60\x60$)`,
 	// blockquote
 	`((?:(?:^|\n)>\s+.*)+)`,
-	// I think this is inline code?
-	`(?:(?:^|\n)(?:[>*+-]|\d+\.)\s+.*)+|(?:\x60([^\x60].*?)\x60)`,
+	// Bullet points, but there's no capture group (disabled)
+	`(?:(?:^|\n)(?:[*+-]|\d+\.)\s+.*)+`,
+	// This is actually inline code
+	`(?:\x60([^\x60](?:.|\s)*?)\x60)`,
 	// Inline markup stuff
 	`(__|\*\*\*|\*\*|[_*]|~~|\|\|)`,
 	// Hyperlinks
@@ -52,6 +54,7 @@ func parse(c string, d *discordgo.Session, m *discordgo.Message) template.HTML {
 			return ""
 		}
 
+		s.message = m
 		md = m.Content
 	}
 
@@ -75,7 +78,7 @@ func parse(c string, d *discordgo.Session, m *discordgo.Message) template.HTML {
 		s.WriteString(s.chunk)
 	}
 
-	s.WriteString(md[s.last:])
+	s.WriteString(template.HTMLEscapeString(md[s.last:]))
 
 	for len(s.context) > 0 {
 		s.WriteString(s.tag(s.context[len(s.context)-1]))

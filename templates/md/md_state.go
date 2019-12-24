@@ -16,6 +16,7 @@ type mdState struct {
 	chunk   string
 	prev    string
 	context []string
+	message *discordgo.Message
 }
 
 type match struct {
@@ -128,7 +129,11 @@ func (s *mdState) switchTree(i int) {
 			s.matches[i][11].str,
 			s.matches[i][10].str == "a",
 		)
-		s.chunk = `<img class="emoji" src="` + url + `" />`
+		var class = "emoji"
+		if s.message != nil && s.message.Content == "" {
+			class += " large"
+		}
+		s.chunk = `<img class="` + class + `" src="` + url + `" />`
 
 	default:
 		s.chunk = template.HTMLEscapeString(s.matches[i][0].str)

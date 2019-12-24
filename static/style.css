@@ -45,6 +45,66 @@ main > *:first-child {
 	font-size: 6em;
 }
 
+main > h6.warn {
+	/* Hidden by default */
+	display: none;
+
+    font-size: 0.75em;
+    font-weight: 100;
+    text-align: center;
+    opacity: 0.1;
+
+    width: 400px;
+    margin: 5px;
+
+    position: fixed;
+}
+
+main > h1:hover ~ h6.warn {
+	display: block;
+}
+
+nav {
+    display: flex;
+
+	border-radius: 9999px;
+	overflow: hidden;
+
+	background: linear-gradient(180deg, 
+        rgba(0, 0, 0, 0.35)  5%, 
+        rgba(0, 0, 0, 0.20) 90%) no-repeat;
+}
+
+nav > * {
+    width: 300px;
+    height: 80px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+	transition: background-color 100ms linear;
+	background-color: rgba(0, 0, 0, 0);
+}
+
+nav a {
+	color: white;
+}
+
+nav:hover > #discord {
+	background-color: rgba(114, 137, 218, 0.15);
+}
+nav:hover > #irc {
+	background-color: rgba(139, 194, 73, 0.15);
+}
+
+nav:hover > #discord:hover {
+	background-color: rgba(114, 137, 218, 0.35);
+}
+nav:hover > #irc:hover {
+	background-color: rgba(139, 194, 73, 0.35);
+}
+
 aside.background, iframe.feed {
 	z-index: 0;
 	width:  100vw;
@@ -154,10 +214,11 @@ blockquote {
 img.emoji {
     width:  1.5em;
     height: 1.5em;
+	margin-bottom: -0.4em;
     object-fit: contain;
 }
 
-img.emoji:only-child {
+img.emoji.large {
     width:  3.5em;
     height: 3.5em;
 }
