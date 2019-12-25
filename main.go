@@ -16,6 +16,7 @@ import (
 
 func main() {
 	var token string
+	var err error
 
 	// Try and load a token from file
 	if file := os.Getenv("TOKEN_FILE"); file != "" {
@@ -33,22 +34,24 @@ func main() {
 		log.Fatalln("Token must not be empty!")
 	}
 
-	// nixhubd
-	d, err := discordgo.New("Bot " + token)
-	if err != nil {
-		log.Fatalln("AAAA:", err)
-	}
-
-	d.StateEnabled = true
-	d.State.TrackChannels = true
-	d.State.TrackEmojis = true
-	d.State.TrackMembers = true
-	d.State.TrackRoles = true
-	d.State.TrackVoice = false
-	// dispenser keeps its own message pool
-	d.State.MaxMessageCount = 0
+	var d *discordgo.Session
 
 	start("Discord", func() {
+		// nixhubd
+		d, err = discordgo.New("Bot " + token)
+		if err != nil {
+			log.Fatalln("AAAA:", err)
+		}
+
+		d.StateEnabled = true
+		d.State.TrackChannels = true
+		d.State.TrackEmojis = true
+		d.State.TrackMembers = true
+		d.State.TrackRoles = true
+		d.State.TrackVoice = false
+		// dispenser keeps its own message pool
+		d.State.MaxMessageCount = 0
+
 		if err := d.Open(); err != nil {
 			log.Fatalln("Failed to connect to Discord:", err)
 		}
@@ -58,15 +61,18 @@ func main() {
 
 	start("Templates", templates.Initialize)
 
+	var s *dispenser.State
+
 	start("Dispenser", func() {
-		if err := dispenser.Initialize(d, os.Getenv("CHANNEL_ID")); err != nil {
+		s, err = dispenser.Initialize(d, os.Getenv("CHANNEL_ID"))
+		if err != nil {
 			log.Fatalln("Failed to initialize dispenser:", err)
 		}
 	})
 
 	r := errchi.NewRouter()
 	r.Mount(templates.MountDir("/static"))
-	r.Get("/feed", dispenser.Handler)
+	r.Get("/feed", s.Handler)
 	r.Get("/", templates.QuickRender(nil))
 
 	log.Println("Serving at :8080")

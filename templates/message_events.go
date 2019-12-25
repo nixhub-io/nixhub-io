@@ -1,8 +1,9 @@
 package templates
 
 import (
-	"fmt"
 	"io"
+
+	"gitlab.com/nixhub/nixhub.io/css"
 )
 
 type MessageDelete struct {
@@ -10,10 +11,7 @@ type MessageDelete struct {
 }
 
 func (d *MessageDelete) Render(w io.Writer) error {
-	_, err := fmt.Fprintf(w, `
-	<style type="text/css">
-		div.message[id="%s"] { display: none; }
-	</style>`, d.ID)
-
-	return err
+	return css.WrapHTMLTo(w, css.Single(
+		"div.message[id='"+d.ID+"']", "display", "none",
+	).CSS())
 }

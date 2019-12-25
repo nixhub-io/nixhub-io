@@ -6,20 +6,21 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/pkg/errors"
 	"gitlab.com/nixhub/nixhub.io/geoip"
 	"gitlab.com/nixhub/nixhub.io/templates"
 	"gitlab.com/shihoya-inc/errchi"
 )
 
-func Handler(w http.ResponseWriter, r *http.Request) (int, error) {
-	return geoip.Middleware(errchi.HandlerFunc(handler)).ServeHTTP(w, r)
+func (s *State) Handler(w http.ResponseWriter, r *http.Request) (int, error) {
+	return geoip.Middleware(errchi.HandlerFunc(s.handler)).ServeHTTP(w, r)
 }
 
-func handler(w http.ResponseWriter, r *http.Request) (int, error) {
+func (s *State) handler(w http.ResponseWriter, r *http.Request) (int, error) {
 	var timezone = r.Context().Value("tz").(*time.Location)
-	if c, err := templates.RenderHomepage(w, CopyPool(), timezone); err != nil {
+	if c, err := templates.Render(w, s.CopyPool(), timezone); err != nil {
 		log.Println("Error rendering pool:", err)
-		return c, err
+		return c, errors.Wrap(err, "Failed to render pool")
 	}
 
 	// We need flusher to print messages live
@@ -28,66 +29,72 @@ func handler(w http.ResponseWriter, r *http.Request) (int, error) {
 		return 200, nil
 	}
 
+	// Flush the typing indicators too, why not
+	if err := s.Typers.Render(w); err != nil {
+		return 500, errors.Wrap(err, "Failed to render typers")
+	}
+
 	fl.Flush()
-	return RegisterWriter(w, r.Context())
+	return s.RegisterWriter(w, r.Context())
 }
 
-func AddMessage(m *discordgo.Message) {
-	if MessagePool == nil {
+func (s *State) AddMessage(m *discordgo.Message) {
+	if s.MessagePool == nil {
 		// Clearly hasn't called Initialize yet
 		return
 	}
 
 	msg := templates.RenderMessage(m)
 
-	MessageMu.Lock()
+	s.MessageMu.Lock()
 
 	// Check last author
-	setLastAuthor(msg)
+	s.setLastAuthor(msg)
 
 	// Move 1->end to 0->(end-1), then set the last element
-	copy(MessagePool[0:BufSz-1], MessagePool[1:BufSz])
-	MessagePool[BufSz-1] = msg
+	copy(s.MessagePool[0:BufSz-1], s.MessagePool[1:BufSz])
+	s.MessagePool[BufSz-1] = msg
 
-	MessageMu.Unlock()
+	s.MessageMu.Unlock()
 
-	Broadcast(msg)
+	s.Broadcast(msg)
+	s.StopTyping(m.Author)
 }
 
-func DeleteMessage(m *discordgo.Message) {
-	if MessagePool == nil {
+func (s *State) DeleteMessage(m *discordgo.Message) {
+	if s.MessagePool == nil {
 		// Clearly hasn't called Initialize yet
 		return
 	}
 
-	MessageMu.Lock()
-	defer MessageMu.Unlock()
+	s.MessageMu.Lock()
+	defer s.MessageMu.Unlock()
 
-	for i, msg := range MessagePool {
+	for i, msg := range s.MessagePool {
 		if msg.ID == m.ID {
 			msg.Content = "<deleted>"
 		}
 
-		if i == len(MessagePool)-1 {
+		if i == len(s.MessagePool)-1 {
 			// Reset last author
-			LastAuthor = nil
+			s.LastAuthor = nil
 		}
 	}
 
-	Broadcast(&templates.MessageDelete{
+	s.Broadcast(&templates.MessageDelete{
 		ID: m.ID,
 	})
 }
 
-func EditMessage(m *discordgo.Message) {
-	if MessagePool == nil {
+func (s *State) EditMessage(m *discordgo.Message) {
+	if s.MessagePool == nil {
 		return
 	}
 
-	MessageMu.Lock()
-	defer MessageMu.Unlock()
+	s.MessageMu.Lock()
+	defer s.MessageMu.Unlock()
 
-	for _, msg := range MessagePool {
+	for _, msg := range s.MessagePool {
 		if msg.ID == m.ID {
 			old := msg.Message
 			old.Content = m.Content

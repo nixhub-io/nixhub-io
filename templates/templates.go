@@ -53,11 +53,11 @@ type RendererWithTimezone interface {
 
 func QuickRender(content Renderer) errchi.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) (int, error) {
-		return RenderHomepage(w, content, nil)
+		return Render(w, content, nil)
 	}
 }
 
-func RenderHomepage(w io.Writer, content Renderer, tz *time.Location) (int, error) {
+func Render(w io.Writer, content Renderer, tz *time.Location) (int, error) {
 	var err error
 
 	switch content := content.(type) {

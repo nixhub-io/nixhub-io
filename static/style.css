@@ -11,16 +11,28 @@
 
 body {
     margin: 0;
+
     background-color: #212121;
     color: #fefefe;
+
     font-family: "Whitney", sans-serif;
+
 	height: 100vh;
 	width:  100vw;
+
+	display: flex;
+	justify-content: center;
 }
 
-main {
+body.feed {
+	/* Passthrough mouse */
+	pointer-events: none;
+}
+
+main.homepage {
 	z-index: 10;
-	background: linear-gradient(180deg, 
+	background: linear-gradient(
+		180deg, 
         rgba(33,33,33,1)    20%, 
         rgba(255,255,255,0) 90%) no-repeat;
 
@@ -35,17 +47,24 @@ main {
 	/* Children styling */
 	display: flex;
 	flex-direction: column;
+	justify-content: center;
 	align-items: center;
+
+	/* Passthrough mouse here too, we don't want people selecting texts */
+	pointer-events: none;
 }
 
-main > *:first-child {
-	padding-top: 400px;
-	padding-bottom: 50px;
+main.homepage > * {
+	/* Exemptions */
+	pointer-events: all;
+}
 
+main.homepage > *:first-child {
+	padding-bottom: 50px;
 	font-size: 6em;
 }
 
-main > h6.warn {
+main.homepage > h6.warn {
 	/* Hidden by default */
 	display: none;
 
@@ -58,9 +77,10 @@ main > h6.warn {
     margin: 5px;
 
     position: fixed;
+	top: 0;
 }
 
-main > h1:hover ~ h6.warn {
+main.homepage > h1:hover ~ h6.warn {
 	display: block;
 }
 
@@ -136,6 +156,7 @@ img[src=""] {
 	z-index: 0;
 
 	max-width: 800px;
+	width: 100%;
 	margin: 0 auto;
 
 	height: 95vh; /* fake bottom padding */
@@ -145,6 +166,7 @@ img[src=""] {
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-end;
+	align-items: flex-start;
 }
 
 .messages > *:last-child {
@@ -286,4 +308,76 @@ span.mention {
 
 .embed .thumbnail {
 	margin-left: 20px;
+}
+
+.embed .attachment {
+	/* Allow interactions */
+	pointer-events: all;
+}
+
+/* Typing indicator */
+.typing {
+	visibility: hidden;
+
+	display: inline-flex;
+	align-items: center;
+
+	width: 100%;
+	max-width: 800px;
+
+	position: fixed;
+	bottom: 5px;
+
+	font-size: 0.9em;
+	font-weight: 400;
+}
+.typing > .people::before, .typing > .people::after {
+	padding-right: 0.25em;
+}
+.typing > .people::before {
+	font-weight: bold;
+}
+
+@keyframes breathing {
+	0% {
+		background-color: #FFFFFFAA;
+	}
+	45%, 100% {
+		background-color: #FFFFFF22;
+	}
+}
+
+.dot-breathing, .dot-breathing::before, .dot-breathing::after {
+	display: block;
+	/* Make children's position absolute align */
+	position: relative;
+
+    width:  7px;
+    height: 7px;
+    border-radius: 9999px;
+
+    background-color: #FFFFFFAA;
+    color: #FFFFFFAA;
+
+	animation: breathing 1200ms infinite alternate;
+}
+
+.dot-breathing::before, .dot-breathing::after {
+	content: "";
+	display: inline-block;
+	position: absolute;
+	top: 0;
+}
+
+.dot-breathing::before {
+	left: -10px;
+	animation-delay: 000ms;
+}
+.dot-breathing {
+	margin-right: 15px;
+    animation-delay: 200ms;
+}
+.dot-breathing::after {
+	left:  10px;
+	animation-delay: 400ms;
 }

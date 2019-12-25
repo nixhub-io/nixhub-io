@@ -5,19 +5,18 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"gitlab.com/nixhub/nixhub.io/templates"
 )
 
-var ClientPool = map[uint64]chan<- templates.Renderer{}
-var ClientMu sync.Mutex
-
 const PoolBuf = 5
 
-func Broadcast(r templates.Renderer) {
-	for i, ch := range ClientPool {
+func (s *State) Broadcast(r templates.Renderer) {
+	s.ClientMu.RLock()
+	defer s.ClientMu.RUnlock()
+
+	for i, ch := range s.ClientPool {
 		select {
 		case ch <- r:
 			log.Println("Sent to client", i)
@@ -27,9 +26,9 @@ func Broadcast(r templates.Renderer) {
 	}
 }
 
-func RegisterWriter(w io.Writer, ctx context.Context) (int, error) {
+func (s *State) RegisterWriter(w io.Writer, ctx context.Context) (int, error) {
 	var inc = make(chan templates.Renderer, PoolBuf)
-	defer registerClient(inc)()
+	defer s.registerClient(inc)()
 
 	var flush = w.(http.Flusher).Flush
 
@@ -40,8 +39,13 @@ func RegisterWriter(w io.Writer, ctx context.Context) (int, error) {
 
 	for {
 		select {
-		case m := <-inc:
-			if c, err := templates.RenderHomepage(w, m, tz); err != nil {
+		case m, ok := <-inc:
+			if !ok {
+				// Exit, channel closed
+				return 200, nil
+			}
+
+			if c, err := templates.Render(w, m, tz); err != nil {
 				log.Println("Error rendering message:", err)
 				return c, err
 			}
@@ -52,28 +56,27 @@ func RegisterWriter(w io.Writer, ctx context.Context) (int, error) {
 			return 200, nil
 		}
 	}
-
-	// Is this really unreachable?
-	// return 500, errors.New("unexpected channel death")
 }
 
-var counter uint64
+func (s *State) registerClient(inc chan<- templates.Renderer) (cancel func()) {
+	s.ClientMu.Lock()
+	defer s.ClientMu.Unlock()
 
-func registerClient(inc chan<- templates.Renderer) (cancel func()) {
-	ClientMu.Lock()
-	defer ClientMu.Unlock()
+	var c = s.Counter
+	s.Counter++
 
-	var c = counter
-	counter++
-
-	ClientPool[c] = inc
+	s.ClientPool[c] = inc
 	log.Println("Registered", c)
 
+	return s.makeFree(c)
+}
+
+func (s *State) makeFree(c uint64) func() {
 	return func() {
-		ClientMu.Lock()
-		defer ClientMu.Unlock()
+		s.ClientMu.Lock()
+		defer s.ClientMu.Unlock()
 
 		log.Println("Freeing", c)
-		delete(ClientPool, c)
+		delete(s.ClientPool, c)
 	}
 }

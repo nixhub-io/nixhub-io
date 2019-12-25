@@ -17,6 +17,12 @@
 		{{ range .Message.Embeds }}
 			{{ if eq .Type "image" }}
 				<img class="attachment" src="{{.Thumbnail.ProxyURL}}" />
+			{{ else if eq .Type "gifv" }}
+				<video class="attachment" src="{{.Video.URL}}" 
+					   autoplay mute loop />
+			{{ else if eq .Type "video" }}
+				<video class="attachment" src="{{.Video.URL}}"
+					   controls />
 			{{ else }}
 				{{ template "embed" . }}
 			{{ end }}
@@ -65,7 +71,9 @@
 	
 			{{ if .Image }}
 				{{ template "attachment" .Image }}
-			{{ else if .Video }}
+			{{ end }}
+
+			{{ if .Video }}
 				{{ template "attachment" .Video }}
 			{{ end }}
 	

@@ -5,7 +5,13 @@
 	<link rel="stylesheet" href="/static/style.css">
 </head>
 
-<body class="messages">
+<body class="feed">
+	<div class="typing">
+		<div class="dot-breathing"></div>
+		<span class="people"></span> typing...
+	</div>
+
+	<main class="messages">
 	{{ range . }}
 		{{ template "message" . }}
 	{{ end }}
