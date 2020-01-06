@@ -39,6 +39,8 @@ main.homepage {
 	width:  100vw;
 	height: 100vh;
 
+	padding-bottom: 15vh;
+
 	/* Hack to center */
 	position: fixed;
 	top: 50%;
@@ -59,8 +61,7 @@ main.homepage > * {
 	pointer-events: all;
 }
 
-main.homepage > *:first-child {
-	padding-bottom: 50px;
+main.homepage > h1 {
 	font-size: 6em;
 }
 
@@ -82,6 +83,13 @@ main.homepage > h6.warn {
 
 main.homepage > h1:hover ~ h6.warn {
 	display: block;
+}
+
+main.homepage > img.logo {
+	height: 250px;
+	width:  250px;
+
+	border-radius: 9999px;
 }
 
 nav {

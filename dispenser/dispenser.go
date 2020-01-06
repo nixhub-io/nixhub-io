@@ -40,7 +40,10 @@ func (s *State) CopyPool() templates.Messages {
 // setLastAuthor asserts and returns new.Small
 func (s *State) setLastAuthor(new *templates.Message) bool {
 	if s.LastAuthor == nil {
-		s.LastAuthor = new.Message.Author
+		if new != nil {
+			s.LastAuthor = new.Message.Author
+		}
+
 		return false
 	}
 
