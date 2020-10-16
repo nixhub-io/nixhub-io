@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"gitlab.com/nixhub/nixhub.io/templates"
+	"github.com/nixhub-io/nixhub-io/templates"
 )
 
 const PoolBuf = 5

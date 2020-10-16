@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/diamondburned/arikawa/discord"
+	"github.com/nixhub-io/nixhub-io/geoip"
+	"github.com/nixhub-io/nixhub-io/templates"
 	"github.com/pkg/errors"
-	"gitlab.com/nixhub/nixhub.io/geoip"
-	"gitlab.com/nixhub/nixhub.io/templates"
 	"gitlab.com/shihoya-inc/errchi"
 )
 
@@ -38,18 +38,18 @@ func (s *State) handler(w http.ResponseWriter, r *http.Request) (int, error) {
 	return s.RegisterWriter(w, r.Context())
 }
 
-func (s *State) AddMessage(m *discordgo.Message) {
+func (s *State) AddMessage(m discord.Message) {
 	if s.MessagePool == nil {
 		// Clearly hasn't called Initialize yet
 		return
 	}
 
-	msg := templates.RenderMessage(m)
+	msg := templates.RenderMessage(s.Session, m)
 
 	s.MessageMu.Lock()
 
 	// Check last author
-	s.setLastAuthor(msg)
+	s.setLastAuthor(&msg)
 
 	// Move 1->end to 0->(end-1), then set the last element
 	copy(s.MessagePool[0:BufSz-1], s.MessagePool[1:BufSz])
@@ -61,7 +61,7 @@ func (s *State) AddMessage(m *discordgo.Message) {
 	s.StopTyping(m.Author)
 }
 
-func (s *State) DeleteMessage(m *discordgo.Message) {
+func (s *State) DeleteMessage(id discord.MessageID) {
 	if s.MessagePool == nil {
 		// Clearly hasn't called Initialize yet
 		return
@@ -71,7 +71,7 @@ func (s *State) DeleteMessage(m *discordgo.Message) {
 	defer s.MessageMu.Unlock()
 
 	for i, msg := range s.MessagePool {
-		if msg.ID == m.ID {
+		if msg.ID == id {
 			msg.Content = "<deleted>"
 		}
 
@@ -81,12 +81,10 @@ func (s *State) DeleteMessage(m *discordgo.Message) {
 		}
 	}
 
-	s.Broadcast(&templates.MessageDelete{
-		ID: m.ID,
-	})
+	s.Broadcast(templates.MessageDelete{ID: id})
 }
 
-func (s *State) EditMessage(m *discordgo.Message) {
+func (s *State) EditMessage(m discord.Message) {
 	if s.MessagePool == nil {
 		return
 	}
@@ -94,7 +92,7 @@ func (s *State) EditMessage(m *discordgo.Message) {
 	s.MessageMu.Lock()
 	defer s.MessageMu.Unlock()
 
-	for _, msg := range s.MessagePool {
+	for i, msg := range s.MessagePool {
 		if msg.ID == m.ID {
 			old := msg.Message
 			old.Content = m.Content
@@ -103,18 +101,9 @@ func (s *State) EditMessage(m *discordgo.Message) {
 			old.Mentions = m.Mentions
 			old.Attachments = m.Attachments
 
-			new := templates.RenderMessage(old)
-			*msg = *new
+			s.MessagePool[i] = templates.RenderMessage(s.Session, old)
 
 			return
 		}
 	}
-}
-
-func runHook(fn func(*discordgo.Message), chID string, m *discordgo.Message) {
-	if m.ChannelID != chID {
-		return
-	}
-
-	fn(m)
 }

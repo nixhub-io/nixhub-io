@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/markbates/pkger"
 	"github.com/markbates/pkger/pkging"
 	"github.com/pkg/errors"
@@ -16,7 +15,6 @@ import (
 )
 
 var Frontpage = template.New("").Funcs(htmlFns)
-var Session *discordgo.Session
 
 func Initialize() {
 	pkger.Include("/templates/")

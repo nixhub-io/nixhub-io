@@ -5,7 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.com/nixhub/nixhub.io/css"
+	"github.com/diamondburned/arikawa/discord"
+	"github.com/nixhub-io/nixhub-io/css"
 )
 
 type Typing struct {
@@ -14,7 +15,7 @@ type Typing struct {
 }
 
 type Typer struct {
-	UserID string
+	UserID discord.UserID
 	Name   string
 	When   time.Time
 }

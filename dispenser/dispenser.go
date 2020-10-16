@@ -3,25 +3,27 @@ package dispenser
 import (
 	"sync"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/diamondburned/arikawa/discord"
+	"github.com/diamondburned/arikawa/gateway"
+	"github.com/diamondburned/arikawa/state"
+	"github.com/nixhub-io/nixhub-io/templates"
 	"github.com/pkg/errors"
-	"gitlab.com/nixhub/nixhub.io/templates"
 )
 
 const BufSz = 25
 
 type State struct {
 	MessagePool templates.Messages
-	LastAuthor  *discordgo.User
 	MessageMu   sync.Mutex
+	LastAuthor  *discord.User
 
 	Typers   *templates.Typing
-	Typing   chan *discordgo.TypingStart
-	StopType chan<- *discordgo.User // userID
+	Typing   chan *gateway.TypingStartEvent
+	StopType chan discord.User // userID
 
-	Session   *discordgo.Session
-	ChannelID string
-	GuildID   string
+	Session   *state.State
+	ChannelID discord.ChannelID
+	GuildID   discord.GuildID
 
 	ClientPool map[uint64]chan<- templates.Renderer
 	ClientMu   sync.RWMutex
@@ -34,24 +36,19 @@ func (s *State) CopyPool() templates.Messages {
 	s.MessageMu.Lock()
 	defer s.MessageMu.Unlock()
 
-	return append([]*templates.Message{}, s.MessagePool...)
+	return append([]templates.Message(nil), s.MessagePool...)
 }
 
 // setLastAuthor asserts and returns new.Small
-func (s *State) setLastAuthor(new *templates.Message) bool {
-	if s.LastAuthor == nil {
-		if new != nil {
-			s.LastAuthor = new.Message.Author
-		}
-
-		return false
+func (s *State) setLastAuthor(newMessage *templates.Message) {
+	if s.LastAuthor != nil {
+		newMessage.Small = true &&
+			s.LastAuthor.ID == newMessage.Message.Author.ID &&
+			s.LastAuthor.Username == newMessage.Message.Author.Username
 	}
 
-	new.Small = (s.LastAuthor.ID == new.Message.Author.ID &&
-		s.LastAuthor.Username == new.Message.Author.Username)
-	s.LastAuthor = new.Message.Author
-
-	return new.Small
+	var author = newMessage.Message.Author
+	s.LastAuthor = &author
 }
 
 func (s *State) Close() error {
@@ -79,18 +76,16 @@ func (s *State) addHandler(fn interface{}) {
 	s.closers = append(s.closers, s.Session.AddHandler(fn))
 }
 
-func Initialize(s *discordgo.Session, channelID string) (*State, error) {
+func Initialize(s *state.State, channelID discord.ChannelID) (*State, error) {
 	var state = State{
 		Session:    s,
 		ChannelID:  channelID,
 		ClientPool: make(map[uint64]chan<- templates.Renderer),
 	}
 
-	templates.Session = s
-
-	msgs, err := s.ChannelMessages(channelID, BufSz, "", "", "")
+	msgs, err := s.Client.Messages(channelID, BufSz)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to get messages from "+channelID)
+		return nil, errors.Wrap(err, "Failed to get messages from "+channelID.String())
 	}
 
 	// The first message is the earliest.
@@ -98,7 +93,7 @@ func Initialize(s *discordgo.Session, channelID string) (*State, error) {
 	// Discord is retarded, so we have to fetch GuildID ourselves
 	c, err := s.Channel(channelID)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to get channelID "+channelID)
+		return nil, errors.Wrap(err, "Failed to get channelID "+channelID.String())
 	}
 
 	state.GuildID = c.GuildID
@@ -106,7 +101,7 @@ func Initialize(s *discordgo.Session, channelID string) (*State, error) {
 	state.MessageMu.Lock()
 	defer state.MessageMu.Unlock()
 
-	state.MessagePool = make([]*templates.Message, BufSz)
+	state.MessagePool = make([]templates.Message, BufSz)
 
 	// This loop iterates messages from the latest to the earliest.
 	for i, j := 0, BufSz-1; i < len(msgs); i++ {
@@ -114,7 +109,7 @@ func Initialize(s *discordgo.Session, channelID string) (*State, error) {
 		msg := msgs[i]
 		msg.GuildID = c.GuildID
 
-		state.MessagePool[j] = templates.RenderMessage(msg)
+		state.MessagePool[j] = templates.RenderMessage(state.Session, msg)
 
 		if j--; j < 0 {
 			break
@@ -124,23 +119,33 @@ func Initialize(s *discordgo.Session, channelID string) (*State, error) {
 	// We need another loop to calculate small, as it requires iterating from
 	// earliest to latest. We iterate from the start of MessagePool, as that's
 	// earliest.
-	for _, msg := range state.MessagePool {
-		state.setLastAuthor(msg)
+	for i := range state.MessagePool {
+		state.setLastAuthor(&state.MessagePool[i])
 	}
 
 	// Add hooks
-	state.addHandler(func(_ *discordgo.Session, m *discordgo.MessageCreate) {
-		runHook(state.AddMessage, channelID, m.Message)
+	state.addHandler(func(m *gateway.MessageCreateEvent) {
+		if m.ChannelID == channelID {
+			state.AddMessage(m.Message)
+		}
 	})
-	state.addHandler(func(_ *discordgo.Session, m *discordgo.MessageDelete) {
-		runHook(state.DeleteMessage, channelID, m.Message)
+	state.addHandler(func(m *gateway.MessageDeleteEvent) {
+		if m.ChannelID == channelID {
+			state.DeleteMessage(m.ID)
+		}
 	})
-	state.addHandler(func(_ *discordgo.Session, m *discordgo.MessageUpdate) {
-		runHook(state.EditMessage, channelID, m.Message)
+	state.addHandler(func(m *gateway.MessageUpdateEvent) {
+		if m.ChannelID == channelID {
+			state.EditMessage(m.Message)
+		}
 	})
 
+	request := gateway.RequestGuildMembersData{
+		GuildID: []discord.GuildID{c.GuildID},
+	}
+
 	// Ask to fill up state
-	if err := s.RequestGuildMembers(c.GuildID, "", 0); err != nil {
+	if err := s.Gateway.RequestGuildMembers(request); err != nil {
 		return nil, errors.Wrap(err, "Failed to request all members")
 	}
 

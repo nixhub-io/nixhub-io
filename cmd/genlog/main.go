@@ -5,14 +5,15 @@ import (
 	"log"
 	"os"
 
-	"github.com/bwmarrin/discordgo"
+	"github.com/diamondburned/arikawa/discord"
+	"github.com/diamondburned/arikawa/session"
 	"github.com/k0kubun/pp"
 )
 
 const header = `
 package main
 
-import "github.com/bwmarrin/discordgo"
+import "github.com/diamondburned/arikawa/discord"
 
 `
 
@@ -21,12 +22,17 @@ func main() {
 		log.Fatalln(os.Args[0], "<token>", "<channelID>")
 	}
 
-	d, err := discordgo.New(os.Args[1])
+	d, err := session.New(os.Args[1])
 	if err != nil {
 		log.Fatalln("Failed to connect:", err)
 	}
 
-	msgs, err := d.ChannelMessages(os.Args[2], 10, "", "", "")
+	c, err := discord.ParseSnowflake(os.Args[2])
+	if err != nil {
+		log.Fatalln("Failed to parse snowflake:", err)
+	}
+
+	msgs, err := d.Messages(discord.ChannelID(c), 10)
 	if err != nil {
 		log.Fatalln("Failed to get 10 messages:", err)
 	}

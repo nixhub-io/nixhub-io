@@ -8,9 +8,12 @@ import (
 	"time"
 
 	"git.sr.ht/~diamondburned/gocad"
-	"github.com/bwmarrin/discordgo"
-	"gitlab.com/nixhub/nixhub.io/dispenser"
-	"gitlab.com/nixhub/nixhub.io/templates"
+	"github.com/diamondburned/arikawa/discord"
+	"github.com/diamondburned/arikawa/gateway"
+	"github.com/diamondburned/arikawa/state"
+	"github.com/nixhub-io/nixhub-io/dispenser"
+	"github.com/nixhub-io/nixhub-io/store"
+	"github.com/nixhub-io/nixhub-io/templates"
 	"gitlab.com/shihoya-inc/errchi"
 )
 
@@ -34,37 +37,39 @@ func main() {
 		log.Fatalln("Token must not be empty!")
 	}
 
-	var d *discordgo.Session
+	var s *state.State
 
 	start("Discord", func() {
 		// nixhubd
-		d, err = discordgo.New("Bot " + token)
+		s, err = state.NewWithStore("Bot "+token, store.New())
 		if err != nil {
 			log.Fatalln("AAAA:", err)
 		}
 
-		d.StateEnabled = true
-		d.State.TrackChannels = true
-		d.State.TrackEmojis = true
-		d.State.TrackMembers = true
-		d.State.TrackRoles = true
-		d.State.TrackVoice = false
-		// dispenser keeps its own message pool
-		d.State.MaxMessageCount = 0
+		s.Gateway.AddIntent(gateway.IntentGuilds)
+		s.Gateway.AddIntent(gateway.IntentGuildEmojis)
+		s.Gateway.AddIntent(gateway.IntentGuildMembers)
+		s.Gateway.AddIntent(gateway.IntentGuildMessages)
+		s.Gateway.AddIntent(gateway.IntentGuildMessageTyping)
 
-		if err := d.Open(); err != nil {
+		if err := s.Open(); err != nil {
 			log.Fatalln("Failed to connect to Discord:", err)
 		}
 	})
 
-	defer d.Close()
+	defer s.Close()
 
 	start("Templates", templates.Initialize)
 
-	var s *dispenser.State
+	var d *dispenser.State
 
 	start("Dispenser", func() {
-		s, err = dispenser.Initialize(d, os.Getenv("CHANNEL_ID"))
+		channelID, err := discord.ParseSnowflake(os.Getenv("CHANNEL_ID"))
+		if err != nil {
+			log.Fatalln("Failed to parse $CHANNEL_ID:", err)
+		}
+
+		d, err = dispenser.Initialize(s, discord.ChannelID(channelID))
 		if err != nil {
 			log.Fatalln("Failed to initialize dispenser:", err)
 		}
@@ -72,7 +77,7 @@ func main() {
 
 	r := errchi.NewRouter()
 	r.Mount(templates.MountDir("/static"))
-	r.Get("/feed", s.Handler)
+	r.Get("/feed", d.Handler)
 	r.Get("/", templates.QuickRender(nil))
 
 	log.Println("Serving at :8080")

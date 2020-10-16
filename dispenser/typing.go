@@ -3,28 +3,32 @@ package dispenser
 import (
 	"time"
 
-	"github.com/bwmarrin/discordgo"
-	"github.com/pkg/errors"
-	"gitlab.com/nixhub/nixhub.io/discord"
-	"gitlab.com/nixhub/nixhub.io/templates"
+	"github.com/diamondburned/arikawa/discord"
+	"github.com/diamondburned/arikawa/gateway"
+	"github.com/nixhub-io/nixhub-io/templates"
 )
 
 const TypingTimeout = 10 * time.Second
 
 func (s *State) subscribeTyping() error {
-	subEv := map[string]interface{}{
-		"guild_id":   s.GuildID,
-		"typing":     true,
-		"activities": true,
-	}
+	// err := s.Session.Gateway.GuildSubscribe(gateway.GuildSubscribeData{
+	// 	GuildID: s.GuildID,
+	// 	Typing:  true,
+	// })
 
-	if err := s.Session.SendWSEvent(14, subEv); err != nil {
-		return errors.Wrap(err, "WS failed")
+	// if err != nil {
+	// 	return errors.Wrap(err, "GuildSubscribe failed")
+	// }
+
+	s.Typing = make(chan *gateway.TypingStartEvent)
+	s.Typers = &templates.Typing{
+		Typers: make([]templates.Typer, 0, 5),
 	}
+	s.StopType = make(chan discord.User)
 
 	go s.typingLoop()
 
-	s.addHandler(func(_ *discordgo.Session, t *discordgo.TypingStart) {
+	s.addHandler(func(t *gateway.TypingStartEvent) {
 		if t.ChannelID != s.ChannelID {
 			return
 		}
@@ -35,22 +39,13 @@ func (s *State) subscribeTyping() error {
 	return nil
 }
 
-func (s *State) StopTyping(user *discordgo.User) {
+func (s *State) StopTyping(user discord.User) {
 	s.StopType <- user
 }
 
 func (s *State) typingLoop() {
-	s.Typing = make(chan *discordgo.TypingStart)
-	s.Typers = &templates.Typing{
-		Typers: make([]templates.Typer, 0, 5),
-	}
-
 	var ticker = time.NewTicker(time.Second)
 	defer ticker.Stop()
-
-	var stopper = make(chan *discordgo.User)
-	s.StopType = stopper
-	defer close(stopper)
 
 	for {
 		select {
@@ -59,7 +54,7 @@ func (s *State) typingLoop() {
 				return
 			}
 
-			m, err := discord.Member(s.Session, s.GuildID, t.UserID)
+			m, err := s.Session.Member(s.GuildID, t.UserID)
 			if err != nil {
 				// Shouldn't happen, we just ignore it
 				continue
@@ -77,10 +72,8 @@ func (s *State) typingLoop() {
 
 			s.Typers.AddTyper(typer)
 
-		case user := <-stopper:
-			if !s.Typers.Filter(func(t templates.Typer) bool {
-				return user.ID == t.UserID
-			}) {
+		case user := <-s.StopType:
+			if !s.Typers.Filter(func(t templates.Typer) bool { return user.ID == t.UserID }) {
 				// Not changed, continue
 				continue
 			}

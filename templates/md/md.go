@@ -1,181 +1,187 @@
 package md
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
-	"regexp"
 	"strings"
 
-	"github.com/bwmarrin/discordgo"
-	"gitlab.com/nixhub/nixhub.io/discord"
+	"github.com/diamondburned/arikawa/discord"
+	"github.com/diamondburned/arikawa/state"
+	"github.com/diamondburned/ningen/md"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/renderer"
+	"github.com/yuin/goldmark/util"
 )
 
-var regexes = []string{
-	// codeblock
-	`(?m)(?:\x60\x60\x60 *(\w*)\n([\s\S]*?)\x60\x60\x60$)`,
-	// blockquote
-	`((?:(?:^|\n)>\s+.*)+)`,
-	// Bullet points, but there's no capture group (disabled)
-	`(?:(?:^|\n)(?:[*+-]|\d+\.)\s+.*)+`,
-	// This is actually inline code
-	`(?:\x60([^\x60](?:.|\s)*?)\x60)`,
-	// Inline markup stuff
-	`(__|\*\*\*|\*\*|[_*]|~~|\|\|)`,
-	// Hyperlinks
-	`(https?:\/\S+(?:\.|:)\S+)`,
-	// User mentions
-	`(?:<@!?(\d+)>)`,
-	// Role mentions
-	`(?:<@&(\d+)>)`,
-	// Channel mentions
-	`(?:<#(\d+)>)`,
-	// Emojis
-	`(?:<(a?):.*:(\d+)>)`,
+func renderInline(w util.BufWriter, src []byte, n ast.Node, enter bool) (ast.WalkStatus, error) {
+	node := n.(*md.Inline)
+	attr := node.Attr
+
+	if attr.Has(md.AttrBold) {
+		if enter {
+			w.WriteString("<b>")
+		} else {
+			w.WriteString("</b>")
+		}
+	}
+	if attr.Has(md.AttrItalics) {
+		if enter {
+			w.WriteString("<i>")
+		} else {
+			w.WriteString("</i>")
+		}
+	}
+	if attr.Has(md.AttrUnderline) {
+		if enter {
+			w.WriteString("<u>")
+		} else {
+			w.WriteString("</u>")
+		}
+	}
+	if attr.Has(md.AttrStrikethrough) {
+		if enter {
+			w.WriteString("<s>")
+		} else {
+			w.WriteString("</s>")
+		}
+	}
+	if attr.Has(md.AttrSpoiler) {
+		if enter {
+			w.WriteString("<span style=\"font-color: #777777\">")
+		} else {
+			w.WriteString("</span>")
+		}
+	}
+	if attr.Has(md.AttrMonospace) {
+		if enter {
+			w.WriteString("<code>")
+		} else {
+			w.WriteString("</code>")
+		}
+	}
+
+	return ast.WalkContinue, nil
 }
 
-var r1 = regexp.MustCompile(`(?m)` + strings.Join(regexes, "|"))
+func renderEmoji(w util.BufWriter, src []byte, n ast.Node, enter bool) (ast.WalkStatus, error) {
+	if enter {
+		node := n.(*md.Emoji)
 
-func Parse(d *discordgo.Session, m *discordgo.Message) template.HTML {
-	return parse("", d, m)
+		var class = "emoji"
+		if node.Large {
+			class += " large"
+		}
+
+		fmt.Fprintf(w, `<img class="%s" src="%s" />`, class, node.EmojiURL())
+	}
+
+	return ast.WalkContinue, nil
+}
+
+func renderMention(w util.BufWriter, src []byte, n ast.Node, enter bool) (ast.WalkStatus, error) {
+	if enter {
+		node := n.(*md.Mention)
+
+		switch {
+		case node.Channel != nil:
+			fmt.Fprintf(w,
+				`<span class="mention">#%d</span>`,
+				template.HTMLEscapeString(node.Channel.Name),
+			)
+
+		case node.GuildRole != nil:
+			var color = 0x7289DA
+			if node.GuildRole.Color > 0 {
+				color = node.GuildRole.Color.Int()
+			}
+
+			fmt.Fprintf(w,
+				// #xxxxxx22 for alpha bits.
+				`<span class="mention" style="background-color: #%x22">@%s</span>`,
+				color, template.HTMLEscapeString(node.GuildRole.Name),
+			)
+
+		case node.GuildUser != nil:
+			var name = node.GuildUser.Username
+			if node.GuildUser.Member.Nick != "" {
+				name = node.GuildUser.Member.Nick
+			}
+
+			fmt.Fprintf(w,
+				`<span class="mention">@%s</span>`,
+				template.HTMLEscapeString(name),
+			)
+		}
+	}
+
+	return ast.WalkContinue, nil
+}
+
+func renderCodeBlock(w util.BufWriter, src []byte, n ast.Node, enter bool) (ast.WalkStatus, error) {
+	if enter {
+		node := n.(*ast.FencedCodeBlock)
+
+		var builder strings.Builder
+		for i := 0; i < node.Lines().Len(); i++ {
+			line := node.Lines().At(i)
+			builder.Write(line.Value(src))
+		}
+
+		RenderCodeBlock(string(node.Language(src)), builder.String())
+	}
+
+	return ast.WalkContinue, nil
+}
+
+func renderText(w util.BufWriter, src []byte, n ast.Node, enter bool) (ast.WalkStatus, error) {
+	if enter {
+		node := n.(*ast.Text)
+
+		template.HTMLEscape(w, node.Segment.Value(src))
+
+		switch {
+		case node.HardLineBreak():
+			w.WriteByte('\n')
+		case node.SoftLineBreak():
+			w.WriteString("<br>")
+		}
+	}
+
+	return ast.WalkContinue, nil
+}
+
+type Renderer struct {
+	base renderer.NodeRenderer
+}
+
+var htmlRenderer = func() renderer.Renderer {
+	r := renderer.NewRenderer()
+
+	reg := r.(renderer.NodeRendererFuncRegisterer)
+	reg.Register(md.KindEmoji, renderEmoji)
+	reg.Register(md.KindInline, renderInline)
+	reg.Register(md.KindMention, renderMention)
+	reg.Register(ast.KindText, renderText)
+	reg.Register(ast.KindCodeBlock, renderCodeBlock)
+
+	return r
+}()
+
+func Parse(d *state.State, m *discord.Message) template.HTML {
+	var buf bytes.Buffer
+
+	s := []byte(m.Content)
+	n := md.ParseWithMessage(s, d, m, true)
+	htmlRenderer.Render(&buf, s, n)
+	return template.HTML(buf.String())
 }
 
 func ParseString(c string) template.HTML {
-	return parse(c, nil, nil)
-}
+	var buf bytes.Buffer
 
-func parse(c string, d *discordgo.Session, m *discordgo.Message) template.HTML {
-	var s mdState
-
-	var md string
-	if c != "" {
-		md = c
-	} else {
-		if d == nil || m == nil {
-			return ""
-		}
-
-		md = m.Content
-	}
-
-	s.matches = submatch(r1, md)
-
-	for i := 0; i < len(s.matches); i++ {
-		s.prev = md[s.last:s.matches[i][0].from]
-		s.last = s.getLastIndex(i)
-		s.chunk = "" // reset chunk
-
-		switch {
-		case strings.Count(s.prev, "\\")%2 != 0:
-			s.chunk = template.HTMLEscapeString(s.matches[i][0].str)
-		case c != "":
-			s.switchTree(i)
-		default:
-			s.switchTreeMessage(i, d, m)
-		}
-
-		s.WriteString(template.HTMLEscapeString(s.prev))
-		s.WriteString(s.chunk)
-	}
-
-	s.WriteString(template.HTMLEscapeString(md[s.last:]))
-
-	for len(s.context) > 0 {
-		s.WriteString(s.tag(s.context[len(s.context)-1]))
-	}
-
-	return template.HTML(strings.TrimSpace(s.String()))
-}
-
-func UserNicknameHTML(s *discordgo.Session, m *discordgo.Message,
-	userID string) string {
-
-	var mentioned *discordgo.User
-
-	for _, mention := range m.Mentions {
-		if mention.ID == userID {
-			mentioned = mention
-			break
-		}
-	}
-
-	if mentioned == nil {
-		return "@" + userID
-	}
-
-	var name = mentioned.Username
-
-	mem, err := discord.Member(s, m.GuildID, mentioned.ID)
-	if err == nil && mem.Nick != "" {
-		name = mem.Nick
-	}
-
-	return `<span class="mention">@` +
-		template.HTMLEscapeString(name) + `</span>`
-}
-
-func RoleNameHTML(s *discordgo.Session, m *discordgo.Message,
-	roleID string) string {
-
-	var mroleID string
-
-	for _, mention := range m.MentionRoles {
-		if mention == roleID {
-			mroleID = mention
-			break
-		}
-	}
-
-	if mroleID == "" {
-		return "<@&" + roleID + ">"
-	}
-
-	r, err := discord.Role(s, m.GuildID, mroleID)
-	if err != nil {
-		return "<@&" + roleID + ">"
-	}
-
-	// Default color
-	if r.Color == 0 {
-		r.Color = 0x7289da
-	}
-
-	return fmt.Sprintf(
-		`<span class="mention" style="background-color: #%x">@%s</span>`,
-		r.Color, template.HTMLEscapeString(r.Name),
-	)
-}
-
-func ChannelNameHTML(s *discordgo.Session, m *discordgo.Message,
-	channelID string) string {
-
-	var mentioned *discordgo.Channel
-
-	for _, ch := range m.MentionChannels {
-		if ch.ID == channelID {
-			mentioned = ch
-			break
-		}
-	}
-
-	if mentioned == nil {
-		return "<#" + channelID + ">"
-	}
-
-	c, err := discord.Channel(s, channelID)
-	if err != nil {
-		return "<#" + channelID + ">"
-	}
-
-	return `<span class="mention">#` +
-		template.HTMLEscapeString(c.Name) + `</span>`
-}
-
-const EmojiBaseURL = "https://cdn.discordapp.com/emojis/"
-
-func EmojiURL(emojiID string, animated bool) string {
-	if animated {
-		return EmojiBaseURL + emojiID + ".gif"
-	}
-
-	return EmojiBaseURL + emojiID + ".png"
+	s := []byte(c)
+	n := md.Parse(s)
+	htmlRenderer.Render(&buf, s, n)
+	return template.HTML(buf.String())
 }

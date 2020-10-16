@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"html"
 	"html/template"
 	"io"
 	"log"
@@ -10,19 +11,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bwmarrin/discordgo"
-	"gitlab.com/nixhub/nixhub.io/discord"
-	"gitlab.com/nixhub/nixhub.io/templates/md"
+	"github.com/diamondburned/arikawa/discord"
+	"github.com/diamondburned/arikawa/state"
+	"github.com/nixhub-io/nixhub-io/templates/md"
 )
 
-type Messages []*Message
+type Messages []Message
 
 func (ms Messages) Render(w io.Writer) error {
 	return Frontpage.ExecuteTemplate(w, "messages", ms)
 }
 
 func (ms Messages) RenderWithTimezone(w io.Writer, location *time.Location) error {
-	cp := append([]*Message{}, ms...)
+	cp := append(Messages(nil), ms...)
 
 	for i, msg := range cp {
 		cp[i].timestamp = msg.timestamp.In(location)
@@ -33,7 +34,7 @@ func (ms Messages) RenderWithTimezone(w io.Writer, location *time.Location) erro
 }
 
 type Message struct {
-	ID        string
+	ID        discord.MessageID
 	Author    template.HTML
 	Timestamp template.HTML
 	Content   template.HTML
@@ -42,57 +43,53 @@ type Message struct {
 	// If the last author is the same
 	Small bool
 
-	Message *discordgo.Message
+	Message discord.Message
 
 	timestamp time.Time
 }
 
 var _ RendererWithTimezone = (*Message)(nil)
 
-func (m *Message) Render(w io.Writer) error {
+func (m Message) Render(w io.Writer) error {
 	return Frontpage.ExecuteTemplate(w, "message", m)
 }
 
-func (m *Message) RenderWithTimezone(w io.Writer, location *time.Location) error {
-	cp := &(*m)
-	cp.timestamp = m.timestamp.In(location)
-	cp.Timestamp = fmtTime(m.timestamp)
+func (m Message) RenderWithTimezone(w io.Writer, location *time.Location) error {
+	m.timestamp = m.timestamp.In(location)
+	m.Timestamp = fmtTime(m.timestamp)
 
-	return cp.Render(w)
+	return m.Render(w)
 }
 
-func RenderMessages(dmsgs []*discordgo.Message) Messages {
-	var msgs = make([]*Message, len(dmsgs))
+func RenderMessages(state *state.State, dmsgs []discord.Message) Messages {
+	var msgs = make([]Message, len(dmsgs))
 	for i, dm := range dmsgs {
-		msgs[i] = RenderMessage(dm)
+		msgs[i] = RenderMessage(state, dm)
 	}
 
 	return msgs
 }
 
-func RenderMessage(dm *discordgo.Message) *Message {
+func RenderMessage(state *state.State, dm discord.Message) Message {
 	var m = Message{
 		ID:      dm.ID,
 		Message: dm,
 	}
 
 	// Parse everything, really
-	m.Content = md.Parse(Session, dm)
+	m.Content = md.Parse(state, &dm)
 
 	// Parse timestamp
-	t, err := dm.Timestamp.Parse()
-	if err == nil {
-		m.timestamp = t.UTC()
-		m.Timestamp = fmtTime(m.timestamp)
-	}
+	m.timestamp = dm.Timestamp.Time()
+	m.Timestamp = fmtTime(m.timestamp)
 
 	// Parse author
-	m.Author = parseAuthor(dm.Author, dm.GuildID)
+	m.Author = parseAuthor(state, dm.Author, dm.GuildID)
 
 	// Parse AvatarURL
-	m.AvatarURL = dm.Author.AvatarURL("64")
+	m.AvatarURL = dm.Author.AvatarURL() + "?size=64"
 
-	return &m
+	return m
 }
 
 func fmtTime(t time.Time) template.HTML {
@@ -104,63 +101,41 @@ func fmtTime(t time.Time) template.HTML {
 	return template.HTML(t.Format(time.Kitchen))
 }
 
-func parseAuthor(u *discordgo.User, guildID string) (n template.HTML) {
-	n = escapeHTML(u.Username)
+func parseAuthor(
+	state *state.State, u discord.User, guildID discord.GuildID) template.HTML {
 
-	// Webhooks don't have a discriminator
-	if u.Discriminator == "0000" {
-		return
-	}
+	var name = u.Username
+	var color = discord.Color(0xFFFFFF)
 
-	if guildID == "" {
+	if !guildID.IsValid() {
 		log.Println("GuildID is empty")
-		return
+		return ""
 	}
 
 	// We should try and be conservative, so no session calls
-	mem, err := discord.Member(Session, guildID, u.ID)
-	if err != nil {
-		log.Println("Member state failed:", err)
-		return
-	}
-
-	if mem.Nick != "" {
-		n = escapeHTML(mem.Nick)
-	}
-
-	var top *discordgo.Role
-
-	for _, role := range mem.Roles {
-		r, err := discord.Role(Session, guildID, role)
-		if err != nil {
-			log.Println("Role state failed", err)
-			continue
+	mem, err := state.Member(guildID, u.ID)
+	if err == nil {
+		if mem.Nick != "" {
+			name = mem.Nick
 		}
 
-		if r.Color == 0 {
-			continue
+		c, err := state.MemberColor(guildID, u.ID)
+		if err == nil {
+			color = c
 		}
-
-		if top == nil || r.Position > top.Position {
-			top = r
-		}
-	}
-
-	if top == nil {
-		return
 	}
 
 	// Wrap the username around color codes
-	n = template.HTML(fmt.Sprintf(
+	var html = fmt.Sprintf(
 		`<span style="color: #%x">%s</span>`,
-		top.Color, n,
-	))
+		color, html.EscapeString(name),
+	)
 
 	if u.Bot {
-		n += ` <span class="bot">BOT</span>`
+		html += ` <span class="bot">BOT</span>`
 	}
 
-	return
+	return template.HTML(html)
 }
 
 var (
@@ -180,19 +155,17 @@ var htmlFns = template.FuncMap{
 	"URLIsAudio": func(url string) bool {
 		return checkURLfiletype(url, AudioFormats)
 	},
-	"hex": func(color int) string {
-		return strconv.FormatInt(16777215, 16)
+	"hex": func(color discord.Color) string {
+		return strconv.FormatUint(uint64(color.Uint32()), 16)
 	},
 	"md": func(str string) template.HTML {
 		return md.ParseString(str)
 	},
-	"rfc3339": func(rfc3339 string) template.HTML {
-		t, err := time.Parse(time.RFC3339, rfc3339)
-		if err != nil {
+	"rfc3339": func(t discord.Timestamp) template.HTML {
+		if !t.IsValid() {
 			return ""
 		}
-
-		return fmtTime(t)
+		return fmtTime(t.Time())
 	},
 }
 

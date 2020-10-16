@@ -16,7 +16,7 @@
 
 		{{ range .Message.Embeds }}
 			{{ if eq .Type "image" }}
-				<img class="attachment" src="{{.Thumbnail.ProxyURL}}" />
+				<img class="attachment" src="{{.Thumbnail.Proxy}}" />
 			{{ else if eq .Type "gifv" }}
 				<video class="attachment" src="{{.Video.URL}}" 
 					   autoplay mute loop />
@@ -42,8 +42,8 @@
 		<div class="left">
 			{{ if .Author }}
 			<div class="author">
-				{{ if .Author.IconURL }}
-				<img class="icon" src="{{.Author.ProxyIconURL}}" />
+				{{ if .Author.Icon }}
+				<img class="icon" src="{{.Author.ProxyIcon}}" />
 				{{ end }}
 	
 				<a href="{{.Author.URL}}">{{.Author.Name}}</a>
@@ -80,7 +80,7 @@
 			{{ if or .Footer .Timestamp }}
 			<div class="footer">
 				{{ if .Footer }}
-					<img class="icon" src="{{.Footer.ProxyIconURL}}" />
+					<img class="icon" src="{{.Footer.ProxyIcon}}" />
 					<p>{{.Footer.Text}}</p>
 				{{ end }}
 	
@@ -95,7 +95,7 @@
 
 		<div class="right">
 			{{ if .Thumbnail }}
-			<img class="thumbnail" src="{{.Thumbnail.ProxyURL}}" />
+			<img class="thumbnail" src="{{.Thumbnail.Proxy}}" />
 			{{ end }}
 		</div>
 	</div>
@@ -103,11 +103,11 @@
 
 {{ define "attachment" }}
 	{{ if      (URLIsImage .URL) }}
-	<img   class="attachment" src="{{.ProxyURL}}" />
+	<img   class="attachment" src="{{.ProxyIcon}}" />
 	{{ else if (URLIsVideo .URL) }}
-	<video class="attachment" src="{{.ProxyURL}}" />
+	<video class="attachment" src="{{.ProxyIcon}}" />
 	{{ else if (URLIsAudio .URL) }}
-	<audio class="attachment" src="{{.ProxyURL}}" />
+	<audio class="attachment" src="{{.ProxyIcon}}" />
 	{{ else }}
 	<a class="attachment" href="{{.ProxyURL}}">{{.URL}}</a>
 	{{ end }}
