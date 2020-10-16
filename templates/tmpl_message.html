@@ -103,12 +103,12 @@
 
 {{ define "attachment" }}
 	{{ if      (URLIsImage .URL) }}
-	<img   class="attachment" src="{{.ProxyIcon}}" />
+	<img   class="attachment" src="{{.Proxy}}" />
 	{{ else if (URLIsVideo .URL) }}
-	<video class="attachment" src="{{.ProxyIcon}}" />
+	<video class="attachment" src="{{.Proxy}}" />
 	{{ else if (URLIsAudio .URL) }}
-	<audio class="attachment" src="{{.ProxyIcon}}" />
+	<audio class="attachment" src="{{.Proxy}}" />
 	{{ else }}
-	<a class="attachment" href="{{.ProxyURL}}">{{.URL}}</a>
+	<a class="attachment" href="{{.Proxy}}">{{.URL}}</a>
 	{{ end }}
 {{ end }}
