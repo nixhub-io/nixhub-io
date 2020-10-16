@@ -3,6 +3,7 @@ package main
 import (
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -12,9 +13,12 @@ import (
 	"github.com/diamondburned/arikawa/gateway"
 	"github.com/diamondburned/arikawa/state"
 	"github.com/nixhub-io/nixhub-io/dispenser"
+	"github.com/nixhub-io/nixhub-io/static"
 	"github.com/nixhub-io/nixhub-io/store"
 	"github.com/nixhub-io/nixhub-io/templates"
 	"gitlab.com/shihoya-inc/errchi"
+
+	_ "github.com/nixhub-io/nixhub-io/static"
 )
 
 func main() {
@@ -76,7 +80,7 @@ func main() {
 	})
 
 	r := errchi.NewRouter()
-	r.Mount(templates.MountDir("/static"))
+	r.Mount("/static", http.StripPrefix("/static", static.Handler))
 	r.Get("/feed", d.Handler)
 	r.Get("/", templates.QuickRender(nil))
 
