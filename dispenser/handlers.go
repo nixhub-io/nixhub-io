@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/diamondburned/arikawa/discord"
+	"github.com/diamondburned/arikawa/v2/discord"
 	"github.com/nixhub-io/nixhub-io/geoip"
 	"github.com/nixhub-io/nixhub-io/templates"
 	"github.com/pkg/errors"

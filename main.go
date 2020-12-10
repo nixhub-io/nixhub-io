@@ -9,12 +9,13 @@ import (
 	"time"
 
 	"git.sr.ht/~diamondburned/gocad"
-	"github.com/diamondburned/arikawa/discord"
-	"github.com/diamondburned/arikawa/gateway"
-	"github.com/diamondburned/arikawa/state"
+	"github.com/diamondburned/arikawa/v2/discord"
+	"github.com/diamondburned/arikawa/v2/gateway"
+	"github.com/diamondburned/arikawa/v2/state"
+	"github.com/diamondburned/arikawa/v2/state/store"
+	"github.com/diamondburned/arikawa/v2/state/store/defaultstore"
 	"github.com/nixhub-io/nixhub-io/dispenser"
 	"github.com/nixhub-io/nixhub-io/static"
-	"github.com/nixhub-io/nixhub-io/store"
 	"github.com/nixhub-io/nixhub-io/templates"
 	"gitlab.com/shihoya-inc/errchi"
 
@@ -43,18 +44,24 @@ func main() {
 
 	var s *state.State
 
+	noopCab := store.NoopCabinet
+	noopCab.RoleStore = defaultstore.NewRole()
+	noopCab.EmojiStore = defaultstore.NewEmoji()
+	noopCab.MemberStore = defaultstore.NewMember()
+	noopCab.MessageStore = defaultstore.NewMessage(35)
+
 	start("Discord", func() {
 		// nixhubd
-		s, err = state.NewWithStore("Bot "+token, store.New())
+		s, err = state.NewWithStore("Bot "+token, noopCab)
 		if err != nil {
 			log.Fatalln("AAAA:", err)
 		}
 
-		s.Gateway.AddIntent(gateway.IntentGuilds)
-		s.Gateway.AddIntent(gateway.IntentGuildEmojis)
-		s.Gateway.AddIntent(gateway.IntentGuildMembers)
-		s.Gateway.AddIntent(gateway.IntentGuildMessages)
-		s.Gateway.AddIntent(gateway.IntentGuildMessageTyping)
+		s.Gateway.AddIntents(gateway.IntentGuilds)
+		s.Gateway.AddIntents(gateway.IntentGuildEmojis)
+		s.Gateway.AddIntents(gateway.IntentGuildMembers)
+		s.Gateway.AddIntents(gateway.IntentGuildMessages)
+		s.Gateway.AddIntents(gateway.IntentGuildMessageTyping)
 
 		if err := s.Open(); err != nil {
 			log.Fatalln("Failed to connect to Discord:", err)

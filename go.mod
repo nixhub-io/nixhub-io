@@ -7,7 +7,8 @@ require (
 	git.sr.ht/~diamondburned/gocad v0.0.0-20191225012957-705675bb6b23
 	github.com/alecthomas/chroma v0.7.0
 	github.com/diamondburned/arikawa v1.3.3
-	github.com/diamondburned/ningen v0.2.0
+	github.com/diamondburned/arikawa/v2 v2.0.0-20201208195035-9911a3d6627a
+	github.com/diamondburned/ningen/v2 v2.0.0-20201210080809-a14408097980
 	github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88 // indirect
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/phogolabs/parcello v0.8.2

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/diamondburned/arikawa/discord"
-	"github.com/diamondburned/arikawa/state"
+	"github.com/diamondburned/arikawa/v2/discord"
+	"github.com/diamondburned/arikawa/v2/state"
 	"github.com/nixhub-io/nixhub-io/templates/md"
 )
 

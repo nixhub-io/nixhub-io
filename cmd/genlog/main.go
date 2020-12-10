@@ -5,15 +5,15 @@ import (
 	"log"
 	"os"
 
-	"github.com/diamondburned/arikawa/discord"
-	"github.com/diamondburned/arikawa/session"
+	"github.com/diamondburned/arikawa/v2/discord"
+	"github.com/diamondburned/arikawa/v2/session"
 	"github.com/k0kubun/pp"
 )
 
 const header = `
 package main
 
-import "github.com/diamondburned/arikawa/discord"
+import "github.com/diamondburned/arikawa/v2/discord"
 
 `
 

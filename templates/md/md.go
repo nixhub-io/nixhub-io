@@ -6,9 +6,9 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/diamondburned/arikawa/discord"
-	"github.com/diamondburned/arikawa/state"
-	"github.com/diamondburned/ningen/md"
+	"github.com/diamondburned/arikawa/v2/discord"
+	"github.com/diamondburned/arikawa/v2/state"
+	"github.com/diamondburned/ningen/v2/md"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/util"
@@ -172,7 +172,7 @@ func Parse(d *state.State, m *discord.Message) template.HTML {
 	var buf bytes.Buffer
 
 	s := []byte(m.Content)
-	n := md.ParseWithMessage(s, d, m, true)
+	n := md.ParseWithMessage(s, d.Cabinet, m, true)
 	htmlRenderer.Render(&buf, s, n)
 	return template.HTML(buf.String())
 }
